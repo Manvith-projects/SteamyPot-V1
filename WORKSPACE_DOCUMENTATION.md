@@ -45,19 +45,19 @@ Churn-Prediction is designed to proactively identify customers at risk of leavin
 **Request:**
 ```json
 {
-	"user_id": 12345,
-	"recency": 30,
-	"frequency": 1.2,
-	"monetary": 250.0,
-	"experience": 2.5,
-	"engagement": 0.8
+  "user_id": 12345,
+  "recency": 30,
+  "frequency": 1.2,
+  "monetary": 250.0,
+  "experience": 2.5,
+  "engagement": 0.8
 }
 ```
 **Response:**
 ```json
 {
-	"churn_probability": 0.76,
-	"risk_level": "high"
+  "churn_probability": 0.76,
+  "risk_level": "high"
 }
 ```
 
@@ -117,9 +117,7 @@ Driver-Allocation is responsible for assigning delivery drivers to orders in rea
 - Validate ETA predictions against real delivery times
 - Log allocation decisions for audit and improvement
 
-
-
-- **Outcome**: Increased profitability and customer satisfaction.
+### Dynamic-Pricing
 #### Business Logic & Workflow
 Dynamic-Pricing adjusts delivery fees in real-time based on demand, supply, and external factors. The module monitors order volume, rider availability, weather, and time-of-day to calculate surge pricing. It integrates with the backend to update pricing for new orders and communicates changes to the frontend for user transparency.
 
@@ -172,7 +170,7 @@ Dynamic-Pricing adjusts delivery fees in real-time based on demand, supply, and 
 - Use safety layer to prevent extreme price spikes
 - Log all pricing decisions for audit and improvement
 
-- **Why**: GNNs model traffic networks; RL optimizes delivery routes.
+### ETA-Predictor
 #### Business Logic & Workflow
 ETA-Predictor estimates the delivery time for each order, factoring in geographic, temporal, and environmental variables. The module uses Graph Neural Networks (GNN) to model traffic networks and Reinforcement Learning (RL) to optimize delivery routes. It integrates with the backend to provide real-time ETA updates for customers and drivers.
 
@@ -237,9 +235,7 @@ ETA-Predictor estimates the delivery time for each order, factoring in geographi
 - Use RL optimizer to dynamically adjust routes
 - Log ETA predictions for audit and improvement
 
-- **Algorithms Used**: Large Language Models (LLM), Ranking algorithms.
-
-- **Key Files**: `recommender.py`, `graph_builder.py`, `evaluator.py`
+### Recommendation_Engine
 #### Business Logic & Workflow
 Recommendation_Engine personalizes restaurant and dish suggestions for each user, leveraging collaborative filtering and graph-based algorithms. The module analyzes user order history, ratings, and social trust scores to generate relevant recommendations. It integrates with the backend to serve recommendations via API and updates the frontend UI.
 
@@ -267,21 +263,21 @@ Recommendation_Engine personalizes restaurant and dish suggestions for each user
 **Request:**
 ```json
 {
-	"user_id": 12345,
-	"zone": "Madhapur",
-	"order_history": ["rest_001", "rest_005", "rest_007"],
-	"ratings": 4.2,
-	"trust_score": 0.85
+  "user_id": 12345,
+  "zone": "Madhapur",
+  "order_history": ["rest_001", "rest_005", "rest_007"],
+  "ratings": 4.2,
+  "trust_score": 0.85
 }
 ```
 **Response:**
 ```json
 {
-	"recommendations": [
-		{"restaurant_id": "rest_003", "score": 0.91},
-		{"restaurant_id": "rest_008", "score": 0.88}
-	],
-	"explanation": "Based on your order history and trust network"
+  "recommendations": [
+    {"restaurant_id": "rest_003", "score": 0.91},
+    {"restaurant_id": "rest_008", "score": 0.88}
+  ],
+  "explanation": "Based on your order history and trust network"
 }
 ```
 
@@ -291,95 +287,58 @@ Recommendation_Engine personalizes restaurant and dish suggestions for each user
 - Use trust scores to enhance social relevance
 - Log recommendation outcomes for audit and improvement
 
-## How to Run the Project
-
-### Prerequisites
-1. Python 3.8+ for AI-Layer modules
-2. Node.js 16+ for backend
-3. npm/yarn for frontend
-
-### Setup
-1. Clone the repository
-2. Navigate to each module directory
-3. Install dependencies:
-	 - AI-Layer: `pip install -r requirements.txt` in each submodule
-	 - Backend: `npm install` in backend/
-	 - Frontend: `npm install` in frontend/
-
-### Running AI-Layer
-1. Run main scripts for each module:
-	 - `python main.py` or `python app.py` in the desired submodule
-2. Outputs and logs are saved in `outputs/` or `data/` folders
-
-### Running Backend
-1. In backend/, run:
-	 - `node index.js` or `npm start`
-2. API available at configured port (default: 3000)
-
-### Running Frontend
-1. In frontend/, run:
-	 - `npm run dev`
-2. Access UI at `http://localhost:5173` (default Vite port)
-
-### Full Workflow
-1. Start backend and AI-Layer modules
-2. Start frontend
-3. Interact via web UI; backend connects to AI-Layer for predictions and analytics
-
----
-## Reproducibility & Results
-All datasets are generated with fixed SEED = 42 for reproducibility. Performance metrics are logged and persisted for reporting.
-- **Key Files**: `recovery_engine.py`, `event_monitor.py`
-- **Algorithms Used**: Event-driven recovery, anomaly detection.
-- **Why**: Ensures reliability and minimizes operational disruptions.
-
-### Review-Summarizer
+### Food-Assistant
 #### Business Logic & Workflow
-Review-Summarizer processes user reviews to extract actionable insights, sentiment, and trends. The module uses Retrieval-Augmented Generation (RAG) and NLP preprocessing to summarize large volumes of reviews, identify key feedback, and support quality improvement. It integrates with the backend for review ingestion and serves summaries to the frontend for owner dashboards.
+Food-Assistant is an AI-powered module that provides personalized food recommendations, menu insights, and order management support. It leverages Large Language Models (LLM) and ranking algorithms to understand user preferences, dietary restrictions, and trust scores. The module integrates with the backend for real-time menu updates and interacts with the frontend for conversational UI.
 
 #### Dataset Schema
 | Attribute         | Type    | Description                                 |
 |-------------------|---------|---------------------------------------------|
 | restaurant_id     | int     | Unique restaurant identifier                |
-| review_text       | str     | Natural language review                     |
-| rating            | int     | 1-5 star rating                             |
-| timestamp         | str     | Review time                                 |
+| menu_items        | list    | List of menu items with price, tags, diet   |
+| trust_score       | float   | Recommendation metric                       |
+| location_lat      | float   | Restaurant latitude                         |
+| location_lon      | float   | Restaurant longitude                        |
+| ratings           | float   | Restaurant quality rating                   |
 
 #### ML Pipeline
-1. Data ingestion from review logs and restaurant metadata
-2. NLP preprocessing: tokenization, sentiment analysis, entity extraction
-3. Model training: RAG for summarization, sentiment classification
-4. Evaluation: Sentiment extraction accuracy, summary quality
-5. Model selection based on accuracy and actionable insights
-6. Deployment: Summarization logic served via backend API and frontend UI
+1. Data ingestion from restaurant, menu, and user logs
+2. Feature engineering: menu item tags, price, diet, trust scores
+3. Model training: LLM for conversation, ranking for recommendations
+4. Evaluation: Conversion rate, recommendation accuracy
+5. Model selection based on conversion and user engagement
+6. Deployment: Assistant logic served via backend API and frontend UI
 
 #### Example API
-**Endpoint:** `/api/review/summarize`
+**Endpoint:** `/api/food/assist`
 **Method:** POST
 **Request:**
 ```json
 {
-	"restaurant_id": "rest_005",
-	"reviews": [
-		{"review_text": "Great pizza, fast delivery!", "rating": 5, "timestamp": "2026-03-12T18:30:00Z"},
-		{"review_text": "Too salty, but quick service.", "rating": 3, "timestamp": "2026-03-12T18:45:00Z"}
-	]
+  "user_id": 12345,
+  "diet": "vegetarian",
+  "preferred_cuisine": "Italian",
+  "trust_score": 0.92
 }
 ```
 **Response:**
 ```json
 {
-	"summary": "Customers praise fast delivery and pizza quality, but note occasional saltiness.",
-	"sentiment_score": 0.87,
-	"key_trends": ["fast delivery", "pizza quality", "saltiness"]
+  "recommended_items": [
+    {"restaurant_id": "rest_005", "item": "Margherita Pizza", "score": 0.95},
+    {"restaurant_id": "rest_006", "item": "Veggie Burger", "score": 0.89}
+  ],
+  "explanation": "Based on your preferences and trust network"
 }
 ```
 
 #### Troubleshooting & Best Practices
-- Monitor summary quality and sentiment accuracy
-- Validate extracted trends against actual feedback
-- Use RAG to handle large review volumes efficiently
-- Log summaries for audit and improvement
+- Monitor conversion rates and adjust recommendation logic
+- Validate menu updates and dietary filters
+- Use trust scores to enhance recommendation reliability
+- Log assistant interactions for audit and improvement
+
+### Recovery-Agent
 #### Business Logic & Workflow
 Recovery-Agent monitors delivery events and system anomalies, enabling automated recovery actions for failed deliveries, delays, and negative reviews. The module processes real-time event streams, identifies problem events, and triggers corrective workflows such as driver reassignment, customer compensation, and escalation to support.
 
@@ -407,19 +366,19 @@ Recovery-Agent monitors delivery events and system anomalies, enabling automated
 **Request:**
 ```json
 {
-	"order_id": 5678,
-	"customer_id": 12345,
-	"driver_id": 42,
-	"event": "delay",
-	"timestamp": "2026-03-12T19:10:00Z"
+  "order_id": 5678,
+  "customer_id": 12345,
+  "driver_id": 42,
+  "event": "delay",
+  "timestamp": "2026-03-12T19:10:00Z"
 }
 ```
 **Response:**
 ```json
 {
-	"recovery_action": "driver_reassigned",
-	"status": "resolved",
-	"details": "New driver allocated due to delay"
+  "recovery_action": "driver_reassigned",
+  "status": "resolved",
+  "details": "New driver allocated due to delay"
 }
 ```
 
@@ -428,6 +387,54 @@ Recovery-Agent monitors delivery events and system anomalies, enabling automated
 - Validate recovery actions against customer feedback
 - Use anomaly detection to preempt failures
 - Log all recovery actions for audit and improvement
+
+### Review-Summarizer
+#### Business Logic & Workflow
+Review-Summarizer processes user reviews to extract actionable insights, sentiment, and trends. The module uses Retrieval-Augmented Generation (RAG) and NLP preprocessing to summarize large volumes of reviews, identify key feedback, and support quality improvement. It integrates with the backend for review ingestion and serves summaries to the frontend for owner dashboards.
+
+#### Dataset Schema
+| Attribute         | Type    | Description                                 |
+|-------------------|---------|---------------------------------------------|
+| restaurant_id     | int     | Unique restaurant identifier                |
+| review_text       | str     | Natural language review                     |
+| rating            | int     | 1-5 star rating                             |
+| timestamp         | str     | Review time                                 |
+
+#### ML Pipeline
+1. Data ingestion from review logs and restaurant metadata
+2. NLP preprocessing: tokenization, sentiment analysis, entity extraction
+3. Model training: RAG for summarization, sentiment classification
+4. Evaluation: Sentiment extraction accuracy, summary quality
+5. Model selection based on accuracy and actionable insights
+6. Deployment: Summarization logic served via backend API and frontend UI
+
+#### Example API
+**Endpoint:** `/api/review/summarize`
+**Method:** POST
+**Request:**
+```json
+{
+  "restaurant_id": "rest_005",
+  "reviews": [
+    {"review_text": "Great pizza, fast delivery!", "rating": 5, "timestamp": "2026-03-12T18:30:00Z"},
+    {"review_text": "Too salty, but quick service.", "rating": 3, "timestamp": "2026-03-12T18:45:00Z"}
+  ]
+}
+```
+**Response:**
+```json
+{
+  "summary": "Customers praise fast delivery and pizza quality, but note occasional saltiness.",
+  "sentiment_score": 0.87,
+  "key_trends": ["fast delivery", "pizza quality", "saltiness"]
+}
+```
+
+#### Troubleshooting & Best Practices
+- Monitor summary quality and sentiment accuracy
+- Validate extracted trends against actual feedback
+- Use RAG to handle large review volumes efficiently
+- Log summaries for audit and improvement
 
 ### Services
 #### Business Logic & Workflow
@@ -456,10 +463,10 @@ The Services layer provides reusable business logic, API endpoints, and integrat
 - Monitor service health and error rates
 - Use modular design for easy updates and scaling
 - Log all service interactions for audit and debugging
-- **Purpose**: Shared service layer for AI modules.
-- **Files**: `churn.py`, `driver.py`, `eta.py`, `food.py`, `pricing.py`, `recommend.py`, `recovery.py`, `review.py`
-- **Role**: Encapsulate business logic and API for each AI module.
 
+---
+
+## Backend
 ### Architecture & Workflow
 The backend is built on Node.js, providing a scalable API layer for all platform operations. It manages authentication, data storage, real-time communication, and integration with AI modules. The backend is organized into controllers, models, routes, and utilities for modularity and maintainability.
 
@@ -505,7 +512,6 @@ The backend is built on Node.js, providing a scalable API layer for all platform
 ---
 
 ## Frontend
-
 ### Architecture & Workflow
 The frontend is built with Vite and React, delivering a fast, modern, and responsive user interface. It provides dashboards for owners, real-time order tracking, personalized recommendations, and review summaries. The frontend interacts with the backend via REST APIs and WebSockets for real-time updates.
 
@@ -540,7 +546,6 @@ The frontend is built with Vite and React, delivering a fast, modern, and respon
 ---
 
 ## Achievements & Results
-
 ### Impact Metrics & Outcomes
 The platform has demonstrated measurable improvements across all business and technical KPIs:
 
@@ -572,7 +577,6 @@ The platform has demonstrated measurable improvements across all business and te
 ---
 
 ## Why These Algorithms?
-
 ### Rationale & Comparison
 Algorithm selection is based on a balance of interpretability, performance, scalability, and real-world impact:
 
@@ -603,7 +607,6 @@ Algorithm selection is based on a balance of interpretability, performance, scal
 ---
 
 ## Conclusion
-
 ### Summary & Future Directions
 This workspace integrates advanced AI, robust backend, and modern frontend to deliver a high-performance, scalable, and user-centric food delivery platform. Each module is engineered for reliability, modularity, and real-world impact, leveraging best-in-class algorithms and software practices.
 
@@ -626,6 +629,24 @@ This workspace integrates advanced AI, robust backend, and modern frontend to de
 ---
 
 ## Contact & Further Information
+### Support & Contribution
+For technical details, refer to module-specific README files or contact the development team.
+
+#### Support Channels
+- Email: support@steamypot.ai
+- GitHub Issues: https://github.com/Manvith-projects/SteamyPot-V1/issues
+- Slack: steamy-pot.slack.com (invite required)
+
+#### Documentation & Resources
+- Module-specific READMEs in each subfolder
+- API documentation at `/docs` endpoint (backend)
+- User guides and onboarding materials in `frontend/README.md`
+
+#### Contribution Guidelines
+- Fork the repository and submit pull requests for new features or bug fixes
+- Follow code style and documentation standards outlined in `CONTRIBUTING.md`
+- Participate in code reviews and discussions for continuous improvement
+
 ---
 
 ## Appendix
@@ -671,26 +692,8 @@ Refer to the legend for directionality and integration types. This architecture 
 
 ### Troubleshooting FAQ
 - **Q:** Why are my predictions inaccurate?
-	**A:** Check data freshness, retrain models, validate API integration.
+  **A:** Check data freshness, retrain models, validate API integration.
 - **Q:** How do I debug failed deliveries?
-	**A:** Use Recovery-Agent logs, monitor event streams, validate driver status.
+  **A:** Use Recovery-Agent logs, monitor event streams, validate driver status.
 - **Q:** How do I add a new AI module?
-	**A:** Create a new service, define API endpoints, integrate with backend and frontend.
-
-### Support & Contribution
-For technical details, refer to module-specific README files or contact the development team.
-
-#### Support Channels
-- Email: support@steamypot.ai
-- GitHub Issues: https://github.com/Manvith-projects/SteamyPot-V1/issues
-- Slack: steamy-pot.slack.com (invite required)
-
-#### Documentation & Resources
-- Module-specific READMEs in each subfolder
-- API documentation at `/docs` endpoint (backend)
-- User guides and onboarding materials in `frontend/README.md`
-
-#### Contribution Guidelines
-- Fork the repository and submit pull requests for new features or bug fixes
-- Follow code style and documentation standards outlined in `CONTRIBUTING.md`
-- Participate in code reviews and discussions for continuous improvement
+  **A:** Create a new service, define API endpoints, integrate with backend and frontend.
