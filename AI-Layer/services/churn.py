@@ -7,6 +7,7 @@ Endpoint:  POST /api/churn/predict
 """
 import os
 import json
+import asyncio
 import numpy as np
 import pandas as pd
 import joblib
@@ -158,7 +159,7 @@ class ChurnResponse(BaseModel):
 async def predict_churn(req: ChurnRequest):
     """Predict churn probability for a user."""
     if not _initialized:
-        raise HTTPException(503, f"Churn service unavailable: {_error}")
+        await asyncio.to_thread(init)
 
     raw = req.model_dump()
     full = _engineer(raw)
@@ -169,10 +170,13 @@ async def predict_churn(req: ChurnRequest):
     row.update({f: full.get(f, 0.0) for f in ENGINEERED})
     df_input = pd.DataFrame([row])
 
-    if _model is not None and _transformer is not None:
-        X = _transformer.transform(df_input)
-        prob = float(_model.predict_proba(X)[:, 1][0])
-    else:
+    try:
+        if _model is not None and _transformer is not None:
+            X = _transformer.transform(df_input)
+            prob = float(_model.predict_proba(X)[:, 1][0])
+        else:
+            prob = _heuristic_probability(raw)
+    except Exception:
         prob = _heuristic_probability(raw)
 
     risk_level, action = _classify_risk(prob)

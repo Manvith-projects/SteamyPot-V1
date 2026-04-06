@@ -218,7 +218,29 @@ def _start_daily_cache_warmup():
 async def summarize_reviews(request: SummarizeRequest):
     """Summarize restaurant reviews using RAG pipeline."""
     if not _initialized:
-        raise HTTPException(503, f"Review service unavailable: {_error}")
+        await asyncio.to_thread(init)
+
+    if not _initialized:
+        return SummarizeResponse(
+            summary="Review service is warming up. Please retry shortly.",
+            top_positive_points=[],
+            common_complaints=[],
+            overall_sentiment="unknown",
+            restaurant_id=request.restaurant_id,
+            restaurant_name="Unknown Restaurant",
+            average_rating=0.0,
+            rating_distribution={},
+            preprocessing_stats=PreprocessingStats(
+                original_count=0,
+                duplicates_removed=0,
+                spam_removed=0,
+                after_cleaning=0,
+                final_count=0,
+                truncated=False,
+            ),
+            reviews_analyzed=0,
+            processing_time_ms=0,
+        )
 
     start_time = time.time()
     rid = request.restaurant_id
@@ -252,14 +274,22 @@ async def summarize_reviews(request: SummarizeRequest):
     if not clean_reviews:
         raise HTTPException(422, "All reviews were filtered out during preprocessing.")
 
-    summary_result = await _rag_engine.summarize(
-        restaurant_id=rid,
-        reviews=clean_reviews,
-        restaurant_name=restaurant["name"],
-        avg_rating=avg_rating,
-        rating_distribution=rating_dist,
-        max_reviews=request.max_reviews,
-    )
+    try:
+        summary_result = await _rag_engine.summarize(
+            restaurant_id=rid,
+            reviews=clean_reviews,
+            restaurant_name=restaurant["name"],
+            avg_rating=avg_rating,
+            rating_distribution=rating_dist,
+            max_reviews=request.max_reviews,
+        )
+    except Exception:
+        summary_result = {
+            "summary": "AI summarization is temporarily unavailable. Showing basic review stats only.",
+            "top_positive_points": [],
+            "common_complaints": [],
+            "overall_sentiment": "unknown",
+        }
 
     processing_time = int((time.time() - start_time) * 1000)
 
@@ -288,7 +318,10 @@ async def summarize_reviews(request: SummarizeRequest):
 async def list_restaurants():
     """List all restaurants with review data."""
     if not _initialized:
-        raise HTTPException(503, f"Review service unavailable: {_error}")
+        await asyncio.to_thread(init)
+
+    if not _initialized:
+        return []
 
     restaurants = _restaurant_list_fn()
     result = []

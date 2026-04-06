@@ -126,7 +126,17 @@ async def get_recommendations(
 ):
     """Get restaurant recommendations for a user."""
     if not _initialized:
-        raise HTTPException(503, f"Recommendation service unavailable: {_error}")
+        await asyncio.to_thread(init)
+
+    if not _initialized:
+        return {
+            "user_id": user_id,
+            "strategy": "fallback_unavailable",
+            "requested_strategy": strategy,
+            "recommendations": [],
+            "count": 0,
+            "unavailable_reason": _error,
+        }
 
     requested_strategy = strategy
 
@@ -156,18 +166,6 @@ async def get_recommendations(
             k=k,
         )
 
-        # Enrich with restaurant info
-        rest_map = {int(r["restaurant_id"]): r for _, r in _restaurants_df.iterrows()}
-        enriched = []
-        for rid in recs:
-            info = rest_map.get(rid, {})
-            enriched.append({
-                "restaurant_id": rid,
-                "name": info.get("name", f"Restaurant {rid}"),
-                "zone": info.get("zone", "Unknown"),
-                "rating": float(info.get("rating", 0)),
-            })
-
         if not recs and strategy != "popularity":
             # Secondary fallback: if trust mode returns no candidates,
             # fall back to popularity instead of empty response.
@@ -183,6 +181,18 @@ async def get_recommendations(
             )
             strategy = "popularity"
 
+        # Enrich with restaurant info after final recommendation list is ready.
+        rest_map = {int(r["restaurant_id"]): r for _, r in _restaurants_df.iterrows()}
+        enriched = []
+        for rid in recs:
+            info = rest_map.get(rid, {})
+            enriched.append({
+                "restaurant_id": rid,
+                "name": info.get("name", f"Restaurant {rid}"),
+                "zone": info.get("zone", "Unknown"),
+                "rating": float(info.get("rating", 0)),
+            })
+
         return {
             "user_id": user_id,
             "strategy": strategy,
@@ -192,13 +202,30 @@ async def get_recommendations(
         }
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except Exception as e:
+        return {
+            "user_id": user_id,
+            "strategy": "fallback_error",
+            "requested_strategy": requested_strategy,
+            "recommendations": [],
+            "count": 0,
+            "unavailable_reason": str(e),
+        }
 
 
 @router.get("/")
 async def list_users(limit: int = Query(default=20, ge=1, le=100)):
     """List available user IDs for testing."""
     if not _initialized:
-        raise HTTPException(503, f"Recommendation service unavailable: {_error}")
+        await asyncio.to_thread(init)
+
+    if not _initialized:
+        return {
+            "users": [],
+            "total_users": 0,
+            "total_restaurants": 0,
+            "unavailable_reason": _error,
+        }
 
     user_ids = sorted(_orders_df["user_id"].unique().tolist())
     return {
