@@ -1,12 +1,12 @@
 import React from 'react'
-import Nav from './NaV.JSX'
+import Nav from './Nav'
 import { useSelector, useDispatch } from 'react-redux'
 import { setMyShopData } from '../redux/ownerSlice'
 import axios from 'axios'
 import { serverUrl } from '../App'
 import { FaChartBar, FaStar, FaMoneyBillWave, FaPlus, FaPen, FaReceipt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import OwnerItemCard from './ownerItemCard';
+import OwnerItemCard from './OwnerItemCard';
 function OwnerDashboard() {
   const { myShopData } = useSelector(state => state.owner)
   const dispatch = useDispatch()

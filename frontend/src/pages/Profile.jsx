@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { serverUrl } from '../App'
 import { clearUserData, setUserData } from '../redux/userSlice'
-import Nav from '../components/NaV.JSX'
+import Nav from '../components/Nav'
 import { FaCamera, FaUser, FaEnvelope, FaPhone, FaLock, FaAddressBook, FaTrash, FaPlus, FaChevronRight, FaSignOutAlt, FaFileCsv, FaCloudUploadAlt } from 'react-icons/fa'
 import { ClipLoader } from 'react-spinners'
 
