@@ -71,50 +71,50 @@ _model_load_error = None
 
 def _load_models():
     """Load ML artefacts into globals. Called once at startup."""
-  global _reg_model, _clf_model, _transformer, _models_available, _model_load_error
-  try:
-    _reg_model = joblib.load(os.path.join(OUTPUT_DIR, "best_regression_model.joblib"))
-    _clf_model = joblib.load(os.path.join(OUTPUT_DIR, "best_classification_model.joblib"))
-    _transformer = joblib.load(os.path.join(OUTPUT_DIR, "transformer.joblib"))
-    _models_available = True
-    _model_load_error = None
-    print("[app] Models loaded successfully.")
-  except Exception as e:
-    _reg_model = None
-    _clf_model = None
-    _transformer = None
-    _models_available = False
-    _model_load_error = str(e)
-    print(f"[app] WARNING: Using heuristic fallback (model load failed: {_model_load_error})")
+    global _reg_model, _clf_model, _transformer, _models_available, _model_load_error
+    try:
+        _reg_model = joblib.load(os.path.join(OUTPUT_DIR, "best_regression_model.joblib"))
+        _clf_model = joblib.load(os.path.join(OUTPUT_DIR, "best_classification_model.joblib"))
+        _transformer = joblib.load(os.path.join(OUTPUT_DIR, "transformer.joblib"))
+        _models_available = True
+        _model_load_error = None
+        print("[app] Models loaded successfully.")
+    except Exception as e:
+        _reg_model = None
+        _clf_model = None
+        _transformer = None
+        _models_available = False
+        _model_load_error = str(e)
+        print(f"[app] WARNING: Using heuristic fallback (model load failed: {_model_load_error})")
 
 
 def _heuristic_surge(data: dict) -> tuple[float, int]:
-  """Fallback surge predictor when trained models are unavailable."""
-  hour = int(data["hour"])
-  weather = str(data["weather"]).lower()
-  traffic = float(data["traffic_level"])
-  active_orders = float(data["active_orders"])
-  available_riders = float(max(1.0, data["available_riders"]))
-  hist_demand_trend = float(data["hist_demand_trend"])
-  hist_cancel_rate = float(data["hist_cancel_rate"])
-  is_holiday = int(data["is_holiday"])
+    """Fallback surge predictor when trained models are unavailable."""
+    hour = int(data["hour"])
+    weather = str(data["weather"]).lower()
+    traffic = float(data["traffic_level"])
+    active_orders = float(data["active_orders"])
+    available_riders = float(max(1.0, data["available_riders"]))
+    hist_demand_trend = float(data["hist_demand_trend"])
+    hist_cancel_rate = float(data["hist_cancel_rate"])
+    is_holiday = int(data["is_holiday"])
 
-  is_peak = 1 if hour in {12, 13, 14, 19, 20, 21} else 0
-  demand_supply = active_orders / available_riders
+    is_peak = 1 if hour in {12, 13, 14, 19, 20, 21} else 0
+    demand_supply = active_orders / available_riders
 
-  surge = 1.0
-  surge += max(0.0, demand_supply - 1.0) * 0.35
-  surge += max(0.0, hist_demand_trend - 1.0) * 0.40
-  surge += min(max(traffic - 2.0, 0.0), 3.0) * 0.06
-  surge += min(max(hist_cancel_rate - 0.05, 0.0), 0.20) * 1.2
-  if is_peak:
-    surge += 0.12
-  if is_holiday:
-    surge += 0.08
-  if "rain" in weather or "storm" in weather:
-    surge += 0.10
+    surge = 1.0
+    surge += max(0.0, demand_supply - 1.0) * 0.35
+    surge += max(0.0, hist_demand_trend - 1.0) * 0.40
+    surge += min(max(traffic - 2.0, 0.0), 3.0) * 0.06
+    surge += min(max(hist_cancel_rate - 0.05, 0.0), 0.20) * 1.2
+    if is_peak:
+        surge += 0.12
+    if is_holiday:
+        surge += 0.08
+    if "rain" in weather or "storm" in weather:
+        surge += 0.10
 
-  return float(np.clip(surge, 0.8, 2.8)), is_peak
+    return float(np.clip(surge, 0.8, 2.8)), is_peak
 
 
 # ---------------------------------------------------------------------------
