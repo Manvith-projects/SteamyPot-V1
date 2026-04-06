@@ -9,8 +9,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: MONGODB_URL
         sync: false
       - key: JWT_SECRET
@@ -47,11 +45,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: PORT
-        value: 10001
       - key: ENABLE_NGROK_TESTING
         value: "false"
       - key: MONGODB_URL
+        sync: false
+      - key: MAIN_APP_MONGODB_URL
         sync: false
       - key: GOOGLE_API_KEY
         sync: false
