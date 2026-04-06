@@ -53,8 +53,13 @@ services:
         sync: false
       - key: GOOGLE_API_KEY
         sync: false
+      - key: NGROK_AUTHTOKEN
+        sync: false
+      - key: REVIEW_CACHE_TTL_HOURS
+        sync: false
 
-  - type: static
+  - type: web
+    env: static
     name: steamypot-frontend
     rootDir: frontend
     buildCommand: npm ci && npm run build
@@ -66,3 +71,9 @@ services:
           type: web
           name: steamypot-backend
           property: url
+      - key: VITE_FIREBASE_APIKEY
+        sync: false
+      - key: VITE_GEOAPIKEY
+        sync: false
+      - key: VITE_RAZORPAY_KEY_ID
+        sync: false
