@@ -29,6 +29,7 @@ _transformer = None
 _feature_names = None
 _initialized = False
 _error = None
+_model_source = "unavailable"
 
 # ---------------------------------------------------------------------------
 # Feature definitions (from original app.py)
@@ -53,17 +54,24 @@ ALL_FEATURES = NUMERIC_RAW + ENGINEERED
 # Init
 # ---------------------------------------------------------------------------
 def init():
-    global _model, _transformer, _feature_names, _initialized, _error
+    global _model, _transformer, _feature_names, _initialized, _error, _model_source
     try:
         _model = joblib.load(os.path.join(OUTPUT_DIR, "best_model.joblib"))
         _transformer = joblib.load(os.path.join(OUTPUT_DIR, "transformer.joblib"))
         with open(os.path.join(OUTPUT_DIR, "feature_names.json")) as f:
             _feature_names = json.load(f)
         _initialized = True
+        _model_source = "trained_model"
+        _error = None
         print(f"  [churn] Loaded model ({len(_feature_names)} features)")
     except Exception as e:
         _error = str(e)
-        print(f"  [churn] FAILED: {e}")
+        _model = None
+        _transformer = None
+        _feature_names = ALL_FEATURES
+        _initialized = True
+        _model_source = "heuristic_fallback"
+        print(f"  [churn] WARNING: using heuristic fallback ({e})")
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +103,26 @@ def _classify_risk(prob: float) -> tuple:
         return "medium", "Send loyalty reward or push notification to re-engage."
     else:
         return "high", "Offer personalised discount and schedule direct outreach."
+
+
+def _heuristic_probability(raw: dict) -> float:
+    days = float(raw.get("days_since_last_order", 0.0))
+    cancel = float(raw.get("cancellation_rate", 0.0))
+    delay = float(raw.get("avg_delivery_delay_min", 0.0))
+    complaints = float(raw.get("num_complaints", 0.0))
+    sessions = float(raw.get("app_sessions_per_week", 0.0))
+    orders30 = float(raw.get("orders_last_30d", 0.0))
+    rating = float(raw.get("avg_user_rating", 4.0))
+
+    score = 0.05
+    score += min(days / 60.0, 1.0) * 0.30
+    score += min(cancel / 0.40, 1.0) * 0.20
+    score += min(delay / 40.0, 1.0) * 0.15
+    score += min(complaints / 8.0, 1.0) * 0.10
+    score += (1.0 - min(sessions / 14.0, 1.0)) * 0.10
+    score += (1.0 - min(orders30 / 12.0, 1.0)) * 0.10
+    score += (1.0 - min(max(rating - 2.5, 0.0) / 2.5, 1.0)) * 0.05
+    return float(max(0.01, min(0.99, score)))
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +169,12 @@ async def predict_churn(req: ChurnRequest):
     row.update({f: full.get(f, 0.0) for f in ENGINEERED})
     df_input = pd.DataFrame([row])
 
-    X = _transformer.transform(df_input)
-    prob = float(_model.predict_proba(X)[:, 1][0])
+    if _model is not None and _transformer is not None:
+        X = _transformer.transform(df_input)
+        prob = float(_model.predict_proba(X)[:, 1][0])
+    else:
+        prob = _heuristic_probability(raw)
+
     risk_level, action = _classify_risk(prob)
 
     return ChurnResponse(
@@ -159,4 +191,5 @@ async def health():
         "status": "ok" if _initialized else "unavailable",
         "service": "churn-prediction",
         "error": _error,
+        "model_source": _model_source,
     }

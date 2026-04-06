@@ -32,6 +32,7 @@ _fe_module = None       # feature_engineering
 _safety_module = None   # safety_layer
 _initialized = False
 _error = None
+_model_source = "unavailable"
 
 
 # ---------------------------------------------------------------------------
@@ -39,21 +40,31 @@ _error = None
 # ---------------------------------------------------------------------------
 def init():
     global _reg_model, _clf_model, _transformer, _fe_module, _safety_module
-    global _initialized, _error
+    global _initialized, _error, _model_source
     try:
         _cwd = os.getcwd()
         os.chdir(SERVICE_DIR)
 
-        _reg_model = joblib.load(os.path.join(OUTPUT_DIR, "best_regression_model.joblib"))
-        _clf_model = joblib.load(os.path.join(OUTPUT_DIR, "best_classification_model.joblib"))
-        _transformer = joblib.load(os.path.join(OUTPUT_DIR, "transformer.joblib"))
-
         _fe_module = safe_import(SERVICE_DIR, "feature_engineering")
         _safety_module = safe_import(SERVICE_DIR, "safety_layer")
 
+        try:
+            _reg_model = joblib.load(os.path.join(OUTPUT_DIR, "best_regression_model.joblib"))
+            _clf_model = joblib.load(os.path.join(OUTPUT_DIR, "best_classification_model.joblib"))
+            _transformer = joblib.load(os.path.join(OUTPUT_DIR, "transformer.joblib"))
+            _model_source = "trained_model"
+            _error = None
+            print("  [pricing] Models loaded")
+        except Exception as model_err:
+            _reg_model = None
+            _clf_model = None
+            _transformer = None
+            _model_source = "heuristic_fallback"
+            _error = str(model_err)
+            print(f"  [pricing] WARNING: using heuristic fallback ({model_err})")
+
         _initialized = True
         os.chdir(_cwd)
-        print("  [pricing] Models loaded")
     except Exception as e:
         _error = str(e)
         try:
@@ -61,6 +72,34 @@ def init():
         except Exception:
             pass
         print(f"  [pricing] FAILED: {e}")
+
+
+def _heuristic_surge(data: dict) -> tuple[float, int]:
+    hour = int(data["hour"])
+    weather = str(data["weather"]).lower()
+    traffic = float(data["traffic_level"])
+    active_orders = float(data["active_orders"])
+    available_riders = float(max(1.0, data["available_riders"]))
+    hist_demand_trend = float(data["hist_demand_trend"])
+    hist_cancel_rate = float(data["hist_cancel_rate"])
+    is_holiday = int(data["is_holiday"])
+
+    is_peak = 1 if hour in {12, 13, 14, 19, 20, 21} else 0
+    demand_supply = active_orders / available_riders
+
+    surge = 1.0
+    surge += max(0.0, demand_supply - 1.0) * 0.35
+    surge += max(0.0, hist_demand_trend - 1.0) * 0.40
+    surge += min(max(traffic - 2.0, 0.0), 3.0) * 0.06
+    surge += min(max(hist_cancel_rate - 0.05, 0.0), 0.20) * 1.2
+    if is_peak:
+        surge += 0.12
+    if is_holiday:
+        surge += 0.08
+    if "rain" in weather or "storm" in weather:
+        surge += 0.10
+
+    return float(np.clip(surge, 0.8, 2.8)), is_peak
 
 
 # ---------------------------------------------------------------------------
@@ -123,10 +162,13 @@ async def calculate_price(req: PricingRequest):
         df = pd.DataFrame(row)
 
         df_eng = _fe_module.engineer_features(df)
-        X = _transformer.transform(df_eng)
 
-        raw_surge = float(_reg_model.predict(X)[0])
-        is_peak = int(_clf_model.predict(X)[0])
+        if _reg_model is not None and _clf_model is not None and _transformer is not None:
+            X = _transformer.transform(df_eng)
+            raw_surge = float(_reg_model.predict(X)[0])
+            is_peak = int(_clf_model.predict(X)[0])
+        else:
+            raw_surge, is_peak = _heuristic_surge(data)
 
         ds_ratio = float(df_eng["demand_supply_ratio"].iloc[0])
         dist_km = float(data["distance_km"])
@@ -157,4 +199,5 @@ async def health():
         "status": "ok" if _initialized else "unavailable",
         "service": "dynamic-pricing",
         "error": _error,
+        "model_source": _model_source,
     }

@@ -73,21 +73,51 @@ app = Flask(__name__)
 _model = None
 _transformer = None
 _feature_names = None
+_model_load_error = None
 
 
 def _load_artefacts():
     """Lazy-load model and transformer on first request."""
-    global _model, _transformer, _feature_names
-    if _model is None:
+    global _model, _transformer, _feature_names, _model_load_error
+    if _model is not None and _transformer is not None:
+        return
+    try:
         _model = joblib.load(MODEL_PATH)
-        print(f"[app] Model loaded from {MODEL_PATH}")
-    if _transformer is None:
         _transformer = joblib.load(TRANSFORMER_PATH)
-        print(f"[app] Transformer loaded from {TRANSFORMER_PATH}")
-    if _feature_names is None:
         with open(FEATURE_NAMES_PATH, "r") as f:
             _feature_names = json.load(f)
+        _model_load_error = None
+        print(f"[app] Model loaded from {MODEL_PATH}")
+        print(f"[app] Transformer loaded from {TRANSFORMER_PATH}")
         print(f"[app] Feature names loaded ({len(_feature_names)} features)")
+    except Exception as e:
+        _model = None
+        _transformer = None
+        _feature_names = ALL_FEATURES
+        _model_load_error = str(e)
+        print(f"[app] WARNING: Using heuristic fallback (model load failed: {_model_load_error})")
+
+
+def _heuristic_probability(raw: dict) -> float:
+    """Fallback churn probability when trained artifacts are unavailable."""
+    days = float(raw.get("days_since_last_order", 0.0))
+    cancel = float(raw.get("cancellation_rate", 0.0))
+    delay = float(raw.get("avg_delivery_delay_min", 0.0))
+    complaints = float(raw.get("num_complaints", 0.0))
+    sessions = float(raw.get("app_sessions_per_week", 0.0))
+    orders30 = float(raw.get("orders_last_30d", 0.0))
+    rating = float(raw.get("avg_user_rating", 4.0))
+
+    score = 0.05
+    score += min(days / 60.0, 1.0) * 0.30
+    score += min(cancel / 0.40, 1.0) * 0.20
+    score += min(delay / 40.0, 1.0) * 0.15
+    score += min(complaints / 8.0, 1.0) * 0.10
+    score += (1.0 - min(sessions / 14.0, 1.0)) * 0.10
+    score += (1.0 - min(orders30 / 12.0, 1.0)) * 0.10
+    score += (1.0 - min(max(rating - 2.5, 0.0) / 2.5, 1.0)) * 0.05
+
+    return float(max(0.01, min(0.99, score)))
 
 
 # ---------------------------------------------------------------------------
@@ -202,11 +232,14 @@ def predict_churn():
     row.update({f: full.get(f, 0.0) for f in ENGINEERED})
     df_input = pd.DataFrame([row])
 
-    # Transform (impute + scale) using the saved preprocessor
-    X = _transformer.transform(df_input)
+    if _model is not None and _transformer is not None:
+        X = _transformer.transform(df_input)
+        prob = float(_model.predict_proba(X)[:, 1][0])
+        model_source = "trained_model"
+    else:
+        prob = _heuristic_probability(raw)
+        model_source = "heuristic_fallback"
 
-    # Predict
-    prob = float(_model.predict_proba(X)[:, 1][0])
     risk_level, action = _classify_risk(prob)
 
     return jsonify({
@@ -214,6 +247,8 @@ def predict_churn():
         "risk_level":         risk_level,
         "recommended_action": action,
         "features_used":      len(ALL_FEATURES),
+        "model_source":       model_source,
+        "model_warning":      _model_load_error,
     })
 
 
