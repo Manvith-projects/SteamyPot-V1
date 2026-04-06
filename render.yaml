@@ -30,10 +30,7 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: AI_LAYER_URL
-        fromService:
-          type: web
-          name: steamypot-ai-layer
-          property: url
+        sync: false
 
   - type: web
     name: steamypot-ai-layer
@@ -67,10 +64,7 @@ services:
     pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_SERVER_URL
-        fromService:
-          type: web
-          name: steamypot-backend
-          property: url
+        sync: false
       - key: VITE_FIREBASE_APIKEY
         sync: false
       - key: VITE_GEOAPIKEY
