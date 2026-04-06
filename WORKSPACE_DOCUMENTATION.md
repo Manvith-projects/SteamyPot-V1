@@ -436,6 +436,62 @@ Review-Summarizer processes user reviews to extract actionable insights, sentime
 - Use RAG to handle large review volumes efficiently
 - Log summaries for audit and improvement
 
+### Coupons Service
+#### Business Logic & Workflow
+The Coupons Service manages promotional discount codes for the platform. Admins and owners can create, update, and delete coupons with configurable discount types (percentage or flat), minimum order amounts, maximum discount caps, usage limits, and per-user limits. Users can browse active coupons, apply them at checkout for validation, and redeem them upon order placement.
+
+#### Coupon Schema
+| Attribute             | Type      | Description                                   |
+|-----------------------|-----------|-----------------------------------------------|
+| code                  | String    | Unique coupon code (uppercase)                |
+| description           | String    | Human-readable coupon description             |
+| discountType          | String    | "percentage" or "flat"                        |
+| discountValue         | Number    | Discount amount or percentage                 |
+| minOrderAmount        | Number    | Minimum order value for coupon eligibility     |
+| maxDiscount           | Number    | Maximum discount cap (percentage coupons)     |
+| validFrom             | Date      | Coupon activation date                        |
+| validUntil            | Date      | Coupon expiry date                            |
+| usageLimit            | Number    | Total usage limit across all users            |
+| perUserLimit          | Number    | Maximum uses per user                         |
+| applicableShops       | ObjectId[]| Restrict to specific shops (empty = all)      |
+| applicableCategories  | String[]  | Restrict to specific food categories          |
+| createdBy             | ObjectId  | Admin/owner who created the coupon            |
+| isActive              | Boolean   | Whether coupon is currently active            |
+
+#### Example API
+**Endpoint:** `/api/coupon/apply`
+**Method:** POST
+**Request:**
+```json
+{
+  "code": "WELCOME50",
+  "orderAmount": 500,
+  "shopId": "optional_shop_id"
+}
+```
+**Response:**
+```json
+{
+  "valid": true,
+  "code": "WELCOME50",
+  "discount": 150,
+  "discountType": "percentage",
+  "discountValue": 50,
+  "description": "50% off on first order"
+}
+```
+
+#### Access Control
+- **Create/Update:** Admin and Owner roles only
+- **Delete:** Admin role only
+- **Browse/Apply/Redeem:** All authenticated users
+
+#### Troubleshooting & Best Practices
+- Monitor coupon redemption rates and fraud patterns
+- Set reasonable usage limits to prevent abuse
+- Use per-user limits for promotional coupons
+- Validate coupon expiry and minimum order amounts at checkout
+
 ### Services
 #### Business Logic & Workflow
 The Services layer provides reusable business logic, API endpoints, and integration utilities for all AI modules. Each service encapsulates domain-specific operations (e.g., churn prediction, driver allocation, ETA calculation) and exposes them via RESTful APIs. The layer ensures modularity, maintainability, and consistent data flow between backend and AI modules.
@@ -451,6 +507,7 @@ The Services layer provides reusable business logic, API endpoints, and integrat
 | Recommend       | /api/recommend/user       | POST   | Recommend restaurants/dishes      |
 | Recovery        | /api/recovery/monitor     | POST   | Monitor and recover delivery      |
 | Review          | /api/review/summarize     | POST   | Summarize user reviews            |
+| Coupon          | /api/coupon/*             | *      | Coupon management & redemption    |
 
 #### Module Integration
 - Each service is imported and used by backend controllers
@@ -470,6 +527,14 @@ The Services layer provides reusable business logic, API endpoints, and integrat
 ### Architecture & Workflow
 The backend is built on Node.js, providing a scalable API layer for all platform operations. It manages authentication, data storage, real-time communication, and integration with AI modules. The backend is organized into controllers, models, routes, and utilities for modularity and maintainability.
 
+#### User Roles
+| Role        | Description                                                      |
+|-------------|------------------------------------------------------------------|
+| user        | End customer — browses shops, places orders, writes reviews      |
+| owner       | Restaurant owner — manages shop, items, views analytics          |
+| deliveryBoy | Rider — accepts delivery assignments, updates order status       |
+| admin       | Platform administrator — full access, manages coupons & users    |
+
 #### Key Components
 - **index.js**: Entry point, initializes server and middleware
 - **Controllers**: Business logic for AI, auth, orders, users
@@ -488,6 +553,12 @@ The backend is built on Node.js, providing a scalable API layer for all platform
 | /api/ai/*               | POST   | AI module endpoints (see Services)|
 | /api/reviews/submit     | POST   | Submit user review                |
 | /api/reviews/get        | GET    | Get reviews for restaurant        |
+| /api/coupon/create      | POST   | Create coupon (admin/owner)       |
+| /api/coupon/all         | GET    | List all coupons                  |
+| /api/coupon/apply       | POST   | Validate & calculate discount     |
+| /api/coupon/redeem      | POST   | Redeem coupon after order         |
+| /api/coupon/update/:id  | PUT    | Update coupon (admin/owner)       |
+| /api/coupon/delete/:id  | DELETE | Delete coupon (admin only)        |
 
 #### Workflow
 1. Client sends request to backend API
