@@ -61,6 +61,16 @@ def init():
         _transformer = joblib.load(os.path.join(OUTPUT_DIR, "transformer.joblib"))
         with open(os.path.join(OUTPUT_DIR, "feature_names.json")) as f:
             _feature_names = json.load(f)
+
+        # Validate the loaded pipeline once so incompatible sklearn internals
+        # do not fail during live requests.
+        smoke_row = {"user_id": 0, "churn": 0}
+        smoke_row.update({f: 0.0 for f in NUMERIC_RAW})
+        smoke_row.update({f: 0.0 for f in ENGINEERED})
+        smoke_df = pd.DataFrame([smoke_row])
+        smoke_X = _transformer.transform(smoke_df)
+        _ = _model.predict_proba(smoke_X)
+
         _initialized = True
         _model_source = "trained_model"
         _error = None
@@ -158,6 +168,8 @@ class ChurnResponse(BaseModel):
 @router.post("/predict", response_model=ChurnResponse)
 async def predict_churn(req: ChurnRequest):
     """Predict churn probability for a user."""
+    global _model, _transformer, _model_source, _error
+
     if not _initialized:
         await asyncio.to_thread(init)
 
@@ -176,7 +188,11 @@ async def predict_churn(req: ChurnRequest):
             prob = float(_model.predict_proba(X)[:, 1][0])
         else:
             prob = _heuristic_probability(raw)
-    except Exception:
+    except Exception as e:
+        _model = None
+        _transformer = None
+        _model_source = "heuristic_fallback"
+        _error = f"model_runtime_incompatible: {e}"
         prob = _heuristic_probability(raw)
 
     risk_level, action = _classify_risk(prob)
