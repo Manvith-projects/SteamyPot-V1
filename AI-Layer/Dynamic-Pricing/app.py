@@ -124,11 +124,11 @@ def _heuristic_surge(data: dict) -> tuple[float, int]:
 @app.route("/health", methods=["GET"])
 def health():
     """Simple liveness probe."""
-  return jsonify({
-    "status": "ok",
-    "models_loaded": _models_available,
-    "model_warning": _model_load_error,
-  })
+    return jsonify({
+        "status": "ok",
+        "models_loaded": _models_available,
+        "model_warning": _model_load_error,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -183,13 +183,13 @@ def calculate_price():
 
         # --- 4/5. Predict (model or heuristic fallback) --------------------
         if _models_available and _transformer is not None:
-          X = _transformer.transform(df_eng)
-          raw_surge = float(_reg_model.predict(X)[0])
-          is_peak = int(_clf_model.predict(X)[0])
-          model_source = "trained_model"
+            X = _transformer.transform(df_eng)
+            raw_surge = float(_reg_model.predict(X)[0])
+            is_peak = int(_clf_model.predict(X)[0])
+            model_source = "trained_model"
         else:
-          raw_surge, is_peak = _heuristic_surge(data)
-          model_source = "heuristic_fallback"
+            raw_surge, is_peak = _heuristic_surge(data)
+            model_source = "heuristic_fallback"
 
         ds_ratio = float(df_eng["demand_supply_ratio"].iloc[0])
         dist_km = float(data["distance_km"])
@@ -210,8 +210,8 @@ def calculate_price():
             "recommended_discount": decision.recommended_discount,
             "pricing_reason":       decision.pricing_reason,
             "is_peak_hour":         decision.is_peak_hour,
-          "model_source":         model_source,
-          "model_warning":        _model_load_error,
+            "model_source":         model_source,
+            "model_warning":        _model_load_error,
         })
 
     except Exception as e:
