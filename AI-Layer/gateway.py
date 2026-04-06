@@ -44,6 +44,7 @@
 import os
 import sys
 import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -86,13 +87,10 @@ SERVICES = [
 _service_status = {}
 
 
-# ---------------------------------------------------------------------------
-# Lifespan — initialize all services at startup
-# ---------------------------------------------------------------------------
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+async def _initialize_services() -> None:
+    """Initialize AI services in the background to avoid blocking port bind."""
     print("\n" + "=" * 60)
-    print("  AI-Layer Unified Gateway — Starting Up")
+    print("  AI-Layer Unified Gateway — Background Initialization")
     print("=" * 60 + "\n")
 
     t0 = time.time()
@@ -100,25 +98,40 @@ async def lifespan(app: FastAPI):
         name = svc["name"]
         print(f"  Initializing {name}...")
         try:
-            svc["init"]()
+            await asyncio.to_thread(svc["init"])
             _service_status[name] = "ok"
         except Exception as e:
             _service_status[name] = f"error: {e}"
-            print(f"  ✗ {name} failed: {e}")
+            print(f"  x {name} failed: {e}")
 
     elapsed = round(time.time() - t0, 1)
-
     ok_count = sum(1 for v in _service_status.values() if v == "ok")
     total = len(SERVICES)
-
     print(f"\n{'=' * 60}")
-    print(f"  ✓ Gateway ready: {ok_count}/{total} services loaded ({elapsed}s)")
-    print(f"  → http://localhost:9001")
-    print(f"  → http://localhost:9001/docs")
-    print(f"  → http://localhost:9001/services")
+    print(f"  Initialization complete: {ok_count}/{total} services ready ({elapsed}s)")
     print(f"{'=' * 60}\n")
 
+
+# ---------------------------------------------------------------------------
+# Lifespan — initialize all services at startup
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    for svc in SERVICES:
+        _service_status[svc["name"]] = "initializing"
+
+    init_task = asyncio.create_task(_initialize_services())
+    app.state.init_task = init_task
+
+    print("\n" + "=" * 60)
+    print("  AI-Layer Unified Gateway — Starting Up")
+    print("=" * 60 + "\n")
+    print("  Gateway listening while services initialize in background")
+
     yield
+
+    if hasattr(app.state, "init_task") and not app.state.init_task.done():
+        app.state.init_task.cancel()
 
     print("\n[gateway] Shutting down...")
 
@@ -147,6 +160,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5174",
+        "https://steamypot-frontend.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
