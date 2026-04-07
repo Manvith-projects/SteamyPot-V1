@@ -66,8 +66,7 @@ save_drivers()
 allocator = DriverAllocator()
 
 print("=" * 60)
-print("  ✓ Ready to accept requests")
-print("=" * 60)
+    print("  [OK] Ready to accept requests")
 
 
 # ---------------------------------------------------------------------------

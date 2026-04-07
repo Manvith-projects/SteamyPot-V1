@@ -185,7 +185,23 @@ def _start_daily_cache_warmup():
         _cache_warmup_status = {"state": "running", "last_run": None, "built": 0, "reused": 0}
         try:
             entries, warnings = _build_cache_entries()
-            result = asyncio.run(_rag_engine.prime_cache_entries(entries))
+            
+            # Run asyncio with timeout to prevent indefinite hanging
+            import signal
+            
+            def _timeout_handler(signum, frame):
+                raise TimeoutError("Cache warmup timeout after 10 seconds")
+            
+            try:
+                # For Windows and non-signal-based timeout, use a custom wrapper
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(asyncio.run, _rag_engine.prime_cache_entries(entries))
+                    result = future.result(timeout=10)  # Wait max 10 seconds
+            except Exception as timeout_exc:
+                print(f"  [review] Cache warmup timeout: {timeout_exc}")
+                result = {"built": 0, "reused": 0}
+            
             state = "completed_with_warnings" if warnings else "completed"
             _cache_warmup_status = {
                 "state": state,

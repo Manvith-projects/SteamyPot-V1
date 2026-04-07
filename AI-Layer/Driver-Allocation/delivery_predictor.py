@@ -115,7 +115,7 @@ def train_model(force: bool = False) -> GradientBoostingRegressor:
     if not force and os.path.exists(MODEL_PATH):
         with open(MODEL_PATH, "rb") as f:
             model = pickle.load(f)
-        print(f"[delivery_predictor] ✓ Loaded model from {MODEL_PATH}")
+        print(f"[delivery_predictor] [OK] Loaded model from {MODEL_PATH}")
         return model
 
     print("[delivery_predictor] Training delivery-time model …")
@@ -136,12 +136,12 @@ def train_model(force: bool = False) -> GradientBoostingRegressor:
     preds = model.predict(X_te)
     mae = mean_absolute_error(y_te, preds)
     r2 = r2_score(y_te, preds)
-    print(f"[delivery_predictor] ✓ MAE={mae:.2f} min  R²={r2:.4f}")
+    print(f"[delivery_predictor] [OK] MAE={mae:.2f} min  R2={r2:.4f}")
 
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(model, f)
-    print(f"[delivery_predictor] ✓ Saved → {MODEL_PATH}")
+    print(f"[delivery_predictor] [OK] Saved to {MODEL_PATH}")
     return model
 
 

@@ -98,8 +98,14 @@ async def _initialize_services() -> None:
         name = svc["name"]
         print(f"  Initializing {name}...")
         try:
-            await asyncio.to_thread(svc["init"])
+            # Review Summarizer needs more time to load sentence-transformers model
+            timeout_secs = 60.0 if name == "Review Summarizer" else 30.0
+            # Run init with timeout to prevent indefinite hanging
+            await asyncio.wait_for(asyncio.to_thread(svc["init"]), timeout=timeout_secs)
             _service_status[name] = "ok"
+        except asyncio.TimeoutError:
+            _service_status[name] = f"timeout ({int(timeout_secs)}s)"
+            print(f"  x {name} timeout after {int(timeout_secs)} seconds")
         except Exception as e:
             _service_status[name] = f"error: {e}"
             print(f"  x {name} failed: {e}")

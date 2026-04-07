@@ -50,6 +50,7 @@ Architecture
 import os
 import re
 import json
+import threading
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
@@ -184,7 +185,22 @@ class LLMEngine:
         self.api_key = os.environ.get("GOOGLE_API_KEY", "")
         self.llm = None
         self.chain = None
-        self._init_llm()
+        self._llm_initialized = False
+        # Start LLM init in background thread with timeout to prevent blocking
+        self._init_llm_with_timeout(timeout_seconds=5)
+
+    def _init_llm_with_timeout(self, timeout_seconds=5):
+        """Initialise LLM in a separate thread with timeout to prevent blocking."""
+        def _init_thread():
+            self._init_llm()
+            self._llm_initialized = True
+        
+        thread = threading.Thread(target=_init_thread, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout_seconds)
+        
+        if thread.is_alive():
+            print("[llm_engine] WARNING: LLM initialization timed out (>5s). Using rule-based fallback.")
 
     def _init_llm(self):
         """

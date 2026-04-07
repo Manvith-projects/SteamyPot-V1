@@ -143,7 +143,7 @@ def save_drivers(out_dir: str = "data") -> str:
     path = os.path.join(out_dir, "drivers.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(drivers, f, indent=2, ensure_ascii=False)
-    print(f"[data_generator] ✓ Saved {len(drivers)} drivers → {path}")
+    print(f"[data_generator] [OK] Saved {len(drivers)} drivers to {path}")
     return path
 
 

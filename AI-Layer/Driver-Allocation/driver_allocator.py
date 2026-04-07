@@ -186,7 +186,7 @@ class DriverAllocator:
             )
             for d in raw
         ]
-        print(f"[allocator] ✓ Loaded {len(self.drivers)} drivers")
+        print(f"[allocator] [OK] Loaded {len(self.drivers)} drivers")
 
     # -----------------------------------------------------------------
     def _score_drivers(self, order: OrderInfo) -> list[ScoredDriver]:
