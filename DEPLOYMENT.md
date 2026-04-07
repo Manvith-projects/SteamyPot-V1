@@ -58,9 +58,18 @@ Services:
 - AI Layer: VM container or Azure Container Apps
 - Database: MongoDB Atlas
 
-## 6) Post-Deploy Smoke Tests
+## 6) Canonical Production AI URL
+
+- Canonical AI base URL: https://steamypot-ai-layer.onrender.com
+- Backend `AI_LAYER_URL` must point to the canonical AI base URL
+- If you use an alias URL such as `https://steamypot-ai.onrender.com`, verify that it is mapped to the active AI service deployment in Render
+
+## 7) Post-Deploy Smoke Tests
 
 - GET /health on backend and AI Layer returns 200
+- GET https://steamypot-ai-layer.onrender.com/health returns 200
+- GET https://steamypot-ai-layer.onrender.com/api/review/health returns 200
+- POST https://steamypot-ai-layer.onrender.com/api/review/summarize with a valid payload returns 200
 - Sign-in works and cookie is set
 - Home page loads restaurants
 - Food assistant responds
