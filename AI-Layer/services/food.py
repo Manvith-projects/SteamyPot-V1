@@ -7,6 +7,7 @@ Endpoint:  POST /api/food/assistant
 """
 import os
 import time
+import threading
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException
@@ -27,6 +28,7 @@ _rank_results = None
 _estimate_eta = None
 _initialized = False
 _error = None
+_init_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +71,19 @@ def init():
         print(f"  [food] FAILED: {e}")
 
 
+def _ensure_initialized() -> bool:
+    """Lazily initialize the service on first request if startup raced."""
+    global _initialized
+    if _initialized:
+        return True
+
+    with _init_lock:
+        if _initialized:
+            return True
+        init()
+        return _initialized
+
+
 # ---------------------------------------------------------------------------
 # Pydantic Models
 # ---------------------------------------------------------------------------
@@ -107,7 +122,7 @@ class FoodResponse(BaseModel):
 @router.post("/assistant", response_model=FoodResponse)
 async def ai_food_assistant(req: FoodRequest):
     """Natural-language food search powered by LangChain + Gemini."""
-    if not _initialized:
+    if not _ensure_initialized():
         raise HTTPException(503, f"Food assistant unavailable: {_error}")
 
     t0 = time.time()
